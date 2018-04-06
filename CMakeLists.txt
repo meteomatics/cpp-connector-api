@@ -1,0 +1,18 @@
+
+CMAKE_MINIMUM_REQUIRED( VERSION 3.0 )
+
+PROJECT( MeteomaticsApi C CXX )
+
+SET( TARGET "meteomatics" )
+
+INCLUDE_DIRECTORIES( "${CMAKE_SOURCE_DIR}/include" )
+
+SET( CMAKE_CXX_STANDARD 11 )
+ADD_DEFINITIONS( -g -Wall -Wextra ) 
+
+
+FILE( GLOB HEADERS "${CMAKE_SOURCE_DIR}/include/Meteomatics_*.h" )
+ADD_EXECUTABLE( ${TARGET} src/meteomatics_main.cpp ${HEADERS} )
+
+TARGET_LINK_LIBRARIES( ${TARGET} curl )
+
