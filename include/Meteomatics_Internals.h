@@ -15,7 +15,7 @@
 #include "curl/curl.h"
 #include <iostream>
 #include <string>
-#include <assert.h>
+#include <cassert>
 #include <ctime>
 #include <chrono>
 #include <array>
@@ -52,7 +52,8 @@ public:
     std::size_t readWithoutProceed(T& t);
     
     std::vector<char> mem;
-    
+
+
 private:
     std::size_t readPos;
     
@@ -97,7 +98,7 @@ std::string MMIntern::MemoryClass::readString(std::size_t _size)
     {
         _size = mem.size() - readPos;
     }
-    std::string str((char*)(&mem[0] + readPos), _size);
+    std::string str(mem.data() + readPos, _size);
     readPos += _size;
     return str;
 }
@@ -127,7 +128,7 @@ std::size_t MMIntern::MemoryClass::readWithoutProceed(T& t)
 template<class T>
 MMIntern::MemoryClass& MMIntern::MemoryClass::operator>>(T& v)
 {
-    std::size_t typeSize = sizeof(T);
+    constexpr std::size_t typeSize = sizeof(T);
     
     if (readPos + typeSize > mem.size())                // in case reading exceeds mem blocks...
     {                                                   //   (maybe cout something)
@@ -142,7 +143,7 @@ MMIntern::MemoryClass& MMIntern::MemoryClass::operator>>(T& v)
 template<class T>
 MMIntern::MemoryClass& MMIntern::MemoryClass::operator<<(const T& v)
 {
-    std::size_t typeSize = sizeof(T);
+    constexpr std::size_t typeSize = sizeof(T);
     
     const char* contentPtr = reinterpret_cast<const char*>(&v);
     mem.insert(mem.end(), contentPtr, contentPtr+typeSize);
@@ -186,7 +187,7 @@ public:
     ~HttpClient();
     
     static std::size_t writeMemoryCallback(void* contents, std::size_t size, std::size_t nmemb, void* userp);
-    static std::size_t writeStringCallback(void *contents, std::size_t size, std::size_t nmemb, void *userp);
+    static std::size_t writeStringCallback(void* contents, std::size_t size, std::size_t nmemb, void* userp);
     
     std::size_t requestString(const std::string& url, const std::string& path, std::string& readBuffer, int timeout, int& http_code);
     std::size_t requestBinary(const std::string& url, const std::string& path, MemoryClass& mem, int timeout, int& http_code) const;
@@ -200,14 +201,14 @@ private:
 
 std::size_t MMIntern::HttpClient::writeMemoryCallback(void* contents, std::size_t size, std::size_t nmemb, void* userp)
 {
-    if (NULL == contents)
+    if (nullptr == contents)
     {
         assert(!"HttpClient::writeMemoryCallback got NULL-pointer from libcurl");
         return 0;
     }
     
     MemoryClass* mem = static_cast<MemoryClass*>(userp);
-    if (NULL == mem)
+    if (nullptr == mem)
     {
         assert(!"HttpClient::writeMemoryCallback got NULL-pointer from user");
         return 0;
@@ -221,14 +222,14 @@ std::size_t MMIntern::HttpClient::writeMemoryCallback(void* contents, std::size_
     return realsize;
 }
 
-std::size_t MMIntern::HttpClient::writeStringCallback(void *contents, std::size_t size, std::size_t nmemb, void *userp)
+std::size_t MMIntern::HttpClient::writeStringCallback(void* contents, std::size_t size, std::size_t nmemb, void* userp)
 {
-    if (NULL == userp)
+    if (nullptr == userp)
     {
         assert(!"HttpClient::writeMemoryCallback got NULL-pointer from user");
         return 0;
     }
-    if (NULL == contents)
+    if (nullptr == contents)
     {
         assert(!"HttpClient::writeMemoryCallback got NULL-pointer from libcurl");
         return 0;
@@ -268,7 +269,7 @@ std::size_t MMIntern::HttpClient::requestString(const std::string& url, const st
     CURL* curl = curl_easy_init();
     if(curl)
     {
-        struct curl_slist *headers=NULL; // init to NULL is important
+        struct curl_slist *headers=nullptr; // init to NULL is important
         headers = curl_slist_append(headers, "Content-Type: text/plain");
         
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers );
@@ -322,7 +323,7 @@ std::size_t MMIntern::HttpClient::requestBinary(const std::string& url, const st
     CURL* curl = curl_easy_init();
     if(curl)
     {
-        struct curl_slist *headers=NULL; // init to NULL is important
+        struct curl_slist *headers=nullptr; // init to NULL is important
         headers = curl_slist_append(headers, "Content-Type: text/plain");
         
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers );
@@ -423,7 +424,7 @@ std::string MeteomaticsApiClient::getTimeStepStr(const int year, const int month
 
 std::string MeteomaticsApiClient::getOptionalSelectString(const std::vector<std::string>& optionals)
 {
-    if (optionals.size() == 0)
+    if (optionals.empty())
     {
         return "";
     }
@@ -595,15 +596,21 @@ bool MeteomaticsApiClient::readGridAndMatrixFromMBG2Format(MMIntern::MemoryClass
     return true;
 }
 
+double MeteomaticsApiClient::round_coordinate(double c)
+{
+    constexpr double scale = 1000000.0;
+    return std::round(scale * c) / scale;
+}
+
 std::string MeteomaticsApiClient::createParameterListString(const std::vector<std::string>& parameters)
 {
-    std::string paramString("");
+    std::string paramString;
     for (std::size_t i = 0; i < parameters.size(); i++)
     {
         paramString += parameters[i];
         if (i < parameters.size()-1)
         {
-            paramString +=",";
+            paramString += ',';
         }
     }
     return paramString;
@@ -611,20 +618,21 @@ std::string MeteomaticsApiClient::createParameterListString(const std::vector<st
 
 std::string MeteomaticsApiClient::createLatLonListString(const std::vector<double>& lats, const std::vector<double>& lons)
 {
-    std::stringstream ss;
     const std::size_t numLat=lats.size();
     if (lons.size() != numLat)
     {
         std::cout << "Received different number of coordinates for lat and lon." << std::endl;
         return "";
     }
-    
+
+    std::stringstream ss;
+    ss.precision(9);
     for (std::size_t i = 0; i < numLat; i++)
     {
-        ss << lats[i] << ',' << lons[i];
+        ss << round_coordinate(lats[i]) << ',' << round_coordinate(lons[i]);
         if (i < numLat-1)
         {
-            ss << "+";
+            ss << '+';
         }
     }
     return ss.str();
@@ -632,7 +640,6 @@ std::string MeteomaticsApiClient::createLatLonListString(const std::vector<doubl
 
 std::string MeteomaticsApiClient::createLatLonListString(const std::vector<double>& lats, const std::vector<double>& lons, const int res_lat, const int res_lon)
 {
-    std::stringstream ss;
     const std::size_t numLat=lats.size();
     if (lons.size() != numLat and lons.size() > 2)
     {
@@ -640,16 +647,19 @@ std::string MeteomaticsApiClient::createLatLonListString(const std::vector<doubl
         "more than 2 coordinates. That is incompatible with grids." << std::endl;
         return "";
     }
-    
+
+    std::stringstream ss;
+    ss.precision(9);
+
     for (std::size_t i = 0; i < numLat; i++)
     {
-        ss << lats[i] << ',' << lons[i];
+        ss << round_coordinate(lats[i]) << ',' << round_coordinate(lons[i]);
         if (i < numLat-1)
         {
-            ss << "_";
+            ss << '_';
         }
     }
-    ss << ":" << res_lat << "x" << res_lon;
+    ss << ':' << res_lat << 'x' << res_lon;
     
     return ss.str();
 }
@@ -687,7 +697,7 @@ bool MeteomaticsApiClient::getTimeSeries(const std::string& startTime, const std
     return true;
 }
 
-bool MeteomaticsApiClient::getGrid(const std::string& time, const std::string& parameter, const double& lat_N, const double& lon_W, const double& lat_S, const double& lon_E, const int nGridPts_Lat, const int nGridPts_Lon, Matrix& gridResult, std::vector<double>& latGridPts, std::vector<double>& lonGridPts, std::string& msg, const std::vector<std::string>& optionals) const
+bool MeteomaticsApiClient::getGrid(const std::string& time, const std::string& parameter, const double lat_N, const double lon_W, const double lat_S, const double lon_E, const int nGridPts_Lat, const int nGridPts_Lon, Matrix& gridResult, std::vector<double>& latGridPts, std::vector<double>& lonGridPts, std::string& msg, const std::vector<std::string>& optionals) const
 {
     gridResult.clear();
     latGridPts.clear();
@@ -772,7 +782,7 @@ bool MeteomaticsApiClient::getMultiPointTimeSeries(const std::string& startTime,
     return true;
 }
 
-bool MeteomaticsApiClient::getMultiPoints(const std::string& time, const std::vector<std::string>& parameters, std::vector<double> lats, std::vector<double> lons, Matrix& result, std::string& msg, const std::vector<std::string>& optionals) const
+bool MeteomaticsApiClient::getMultiPoints(const std::string& time, const std::vector<std::string>& parameters, const std::vector<double>& lats, const std::vector<double>& lons, Matrix& result, std::string& msg, const std::vector<std::string>& optionals) const
 {
     result.clear();
     std::vector<Matrix> tmpResults;
@@ -859,7 +869,7 @@ void MeteomaticsApiClient::datevec(double time,double &year,double &month,double
         }
         
         yp = y;
-        iy = (int) y;
+        iy = int(y);
         leap = (((iy%4 == 0) && (iy%100 != 0)) || (iy%400 == 0));
         cdm = (leap ? cdml : cdm0);
         mon = int( t/29.-1);

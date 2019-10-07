@@ -32,7 +32,7 @@ public:
     //
     // -- query for points on a grid points (one time, coordinate grid)
     //
-    bool getGrid(const std::string& time, const std::string& parameter, const double& lat_N, const double& lon_W, const double& lat_S, const double& lon_E, const int nrGridPts_Lat, const int nrGridPts_Lon, Matrix& gridResult, std::vector<double>& latGridPts, std::vector<double>& lonGridPts, std::string& msg, const std::vector<std::string>& optionals={}) const;
+    bool getGrid(const std::string& time, const std::string& parameter, const double lat_N, const double lon_W, const double lat_S, const double lon_E, const int nrGridPts_Lat, const int nrGridPts_Lon, Matrix& gridResult, std::vector<double>& latGridPts, std::vector<double>& lonGridPts, std::string& msg, const std::vector<std::string>& optionals={}) const;
     
 
     //
@@ -48,7 +48,7 @@ public:
     //
     // -- query for a single time and multiple points (one time, multiple points)
     //
-    bool getMultiPoints(const std::string& time, const std::vector<std::string>& parameters, std::vector<double> lats, std::vector<double> lons, Matrix& result, std::string& msg, const std::vector<std::string>& optionals={}) const;
+    bool getMultiPoints(const std::string& time, const std::vector<std::string>& parameters, const std::vector<double>& lats, const std::vector<double>& lons, Matrix& result, std::string& msg, const std::vector<std::string>& optionals={}) const;
 
     //
     // -- returns an iso-date string for 6 ints (or for a vector with 6 ints)
@@ -74,24 +74,26 @@ public:
     ~MeteomaticsApiClient();
     
 protected:
-    
+
     static std::string createParameterListString(const std::vector<std::string>& parameters);
+
+    static double round_coordinate(double c);
     static std::string createLatLonListString(const std::vector<double>& lats, const std::vector<double>& lons);
     static std::string createLatLonListString(const std::vector<double>& lats, const std::vector<double>& lons, const int res_lat, const int res_lon);
-    
+
     static std::string getOptionalSelectString(const std::vector<std::string>& optionals);
-    
-    bool readSinglePointTimeSeriesBin(MMIntern::MemoryClass& mem, Matrix& results, std::vector<std::string>& times) const ;
-    bool readMultiPointTimeSeriesBin(MMIntern::MemoryClass& mem, std::vector<Matrix>& results, std::vector<std::string>& times) const ;
+
+    bool readSinglePointTimeSeriesBin(MMIntern::MemoryClass& mem, Matrix& results, std::vector<std::string>& times) const;
+    bool readMultiPointTimeSeriesBin(MMIntern::MemoryClass& mem, std::vector<Matrix>& results, std::vector<std::string>& times) const;
     bool readGridAndMatrixFromMBG2Format(MMIntern::MemoryClass& mem, Matrix& results, std::vector<double>& lats, std::vector<double>& lons) const;
-    
-    void datevec(double time,double &year,double &month,double &day,double &hour,double &minute,double &second) const;
+
+    void datevec(double time, double& year, double& month, double& day, double& hour, double& minute, double& second) const;
     std::string convDateIso8601(double date) const;
-    
+
     const MMIntern::HttpClient* httpClient;
 
     const int dataRequestTimeout;
-    
+
     const std::array<int,6> getCurrentTime() const;
     const std::array<int,6> addDayToToday(const int days) const;
 };
