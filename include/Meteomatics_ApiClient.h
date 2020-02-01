@@ -9,6 +9,9 @@
 #ifndef MeteomaticsApiClient_h
 #define MeteomaticsApiClient_h
 
+#include <algorithm>
+#include <array>
+#include <string>
 #include <vector>
 
 namespace MMIntern {
